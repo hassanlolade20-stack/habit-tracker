@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, Pressable, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, FlatList, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -97,9 +97,9 @@ export default function HomeScreen() {
   const doneCount = habits.filter((h) => h.lastCompletedDate === today).length;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>My Habits</Text>
-      <Text style={styles.subheader}>
+    <View className="flex-1 bg-background pt-16 px-5">
+      <Text className="text-3xl font-bold text-textDark">My Habits</Text>
+      <Text className="text-sm text-textMuted mb-4">
         {doneCount} of {habits.length} completed today
       </Text>
 
@@ -109,65 +109,57 @@ export default function HomeScreen() {
         renderItem={({ item }) => {
           const isDoneToday = item.lastCompletedDate === today;
           return (
-            <View style={[styles.habitRow, isDoneToday && styles.habitDone]}>
-              <Pressable style={styles.habitContent} onPress={() => toggleHabit(item.id)}>
-                <Text style={styles.habitText}>
+            <View
+              className={`flex-row items-center p-4 rounded-2xl mb-3 ${
+                isDoneToday ? 'bg-secondary' : 'bg-card'
+              }`}
+            >
+              <Pressable className="flex-1" onPress={() => toggleHabit(item.id)}>
+                <Text className="text-base font-semibold text-textDark">
                   {isDoneToday ? '✅' : '⬜️'} {item.title}
                 </Text>
                 {item.streak > 0 && (
-                  <Text style={styles.streakText}>🔥 {item.streak} day streak</Text>
+                  <Text className="text-xs text-primary font-bold mt-1">
+                    🔥 {item.streak} day streak
+                  </Text>
                 )}
                 {isDoneToday && (
-                  <Text style={styles.completedLabel}>Completed for today!</Text>
+                  <Text className="text-xs text-accent font-bold mt-1">
+                    Completed for today!
+                  </Text>
                 )}
               </Pressable>
 
-              <Pressable onPress={() => deleteHabit(item.id, item.title)} style={styles.deleteButton}>
-                <Ionicons name="trash-outline" size={18} color="#E63946" />
+              <Pressable
+                onPress={() => deleteHabit(item.id, item.title)}
+                className="pl-3 py-2 px-2"
+              >
+                <Ionicons name="trash-outline" size={18} color="#C1502E" />
               </Pressable>
             </View>
           );
         }}
       />
 
-      <View style={styles.addRow}>
+      <View className="flex-row mt-5 mb-2">
         <TextInput
-          style={styles.input}
+          className="flex-1 border border-secondary rounded-2xl p-3 mr-2 bg-card text-textDark"
           placeholder="Add a new habit..."
+          placeholderTextColor="#8B6F5C"
           value={newHabit}
           onChangeText={setNewHabit}
         />
-        <Pressable style={styles.addButton} onPress={addHabit}>
-          <Text style={styles.addButtonText}>Add</Text>
+        <Pressable
+          className="bg-primary rounded-2xl px-5 justify-center"
+          onPress={addHabit}
+        >
+          <Text className="text-white font-bold">Add</Text>
         </Pressable>
       </View>
 
-      <Text style={styles.hint}>Tap the trash icon to delete a habit</Text>
+      <Text className="text-xs text-textMuted text-center mb-5">
+        Tap the trash icon to delete a habit
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 20, backgroundColor: '#fff' },
-  header: { fontSize: 28, fontWeight: 'bold' },
-  subheader: { fontSize: 14, color: '#666', marginBottom: 16 },
-  habitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f2f2f2',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  habitContent: { flex: 1 },
-  deleteButton: { paddingLeft: 12, paddingVertical: 8, paddingHorizontal: 8 },
-  habitDone: { backgroundColor: '#d4f8d4' },
-  habitText: { fontSize: 16 },
-  streakText: { fontSize: 13, color: '#FF6B6B', marginTop: 4, fontWeight: '600' },
-  completedLabel: { fontSize: 12, color: '#2E7D32', marginTop: 4, fontWeight: '600' },
-  addRow: { flexDirection: 'row', marginTop: 20, marginBottom: 10 },
-  input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 12, marginRight: 8 },
-  addButton: { backgroundColor: '#4CAF50', borderRadius: 10, paddingHorizontal: 20, justifyContent: 'center' },
-  addButtonText: { color: '#fff', fontWeight: 'bold' },
-  hint: { fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 20 },
-});
