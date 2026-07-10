@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, Pressable, TextInput, StyleSheet, FlatList } from 'react-native';
 
 // 1. TYPESCRIPT: define the "shape" of a Habit.
@@ -20,6 +21,21 @@ export default function App() {
 
   // 3. STATE: what the user is currently typing in the input box
   const [newHabit, setNewHabit] = useState('');
+  // Load saved habits from the phone when the app first opens
+useEffect(() => {
+  async function loadHabits() {
+    const saved = await AsyncStorage.getItem('habits');
+    if (saved) {
+      setHabits(JSON.parse(saved));
+    }
+  }
+  loadHabits();
+}, []);
+
+// Save habits to the phone every time the list changes
+useEffect(() => {
+  AsyncStorage.setItem('habits', JSON.stringify(habits));
+}, [habits]);
 
   // 4. This function toggles one habit's "done" status by id
   function toggleHabit(id: string) {
