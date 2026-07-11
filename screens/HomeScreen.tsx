@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, Alert, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/Logo';
@@ -22,9 +22,11 @@ const categoryColors: Record<Category, string> = {
   Other: '#8B6F5C',
 };
 
-const categories: Category[] = ['Health', 'Fitness', 'Learning', 'Other'];
-
+const categoryOrder: Category[] = ['Health', 'Fitness', 'Learning', 'Other'];
 const cardColors = ['#F4A896', '#F6C99C', '#B8D8B8', '#A8D0DB', '#D6B8E8'];
+
+const screenWidth = Dimensions.get('window').width;
+const CARD_SIZE = (screenWidth - 20 * 2 - 12) / 2;
 
 function getToday(): string {
   return new Date().toISOString().split('T')[0];
@@ -52,6 +54,32 @@ function getHabitIcon(title: string): keyof typeof Ionicons.glyphMap {
   return 'checkmark-circle';
 }
 
+function getHabitCategory(title: string): Category {
+  const lower = title.toLowerCase();
+  if (
+    lower.includes('water') || lower.includes('drink') || lower.includes('sleep') ||
+    lower.includes('meditat') || lower.includes('eat') || lower.includes('food') ||
+    lower.includes('meal') || lower.includes('vitamin') || lower.includes('doctor')
+  ) {
+    return 'Health';
+  }
+  if (
+    lower.includes('run') || lower.includes('walk') || lower.includes('exercise') ||
+    lower.includes('gym') || lower.includes('workout') || lower.includes('stretch') ||
+    lower.includes('yoga') || lower.includes('swim')
+  ) {
+    return 'Fitness';
+  }
+  if (
+    lower.includes('read') || lower.includes('book') || lower.includes('study') ||
+    lower.includes('learn') || lower.includes('course') || lower.includes('practice') ||
+    lower.includes('journal') || lower.includes('write')
+  ) {
+    return 'Learning';
+  }
+  return 'Other';
+}
+
 export default function HomeScreen() {
   const [habits, setHabits] = useState<Habit[]>([
     { id: '1', title: 'Drink water', lastCompletedDate: null, streak: 0, category: 'Health' },
@@ -59,7 +87,6 @@ export default function HomeScreen() {
     { id: '3', title: 'Stretch for 5 min', lastCompletedDate: null, streak: 0, category: 'Fitness' },
   ]);
   const [newHabit, setNewHabit] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<Category>('Health');
   const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
@@ -124,7 +151,7 @@ export default function HomeScreen() {
       title: newHabit,
       lastCompletedDate: null,
       streak: 0,
-      category: selectedCategory,
+      category: getHabitCategory(newHabit),
     };
     setHabits([...habits, habit]);
     setNewHabit('');
@@ -148,6 +175,68 @@ export default function HomeScreen() {
   const today = getToday();
   const doneCount = habits.filter((h) => h.lastCompletedDate === today).length;
 
+  const colorMap: Record<string, string> = {};
+  habits.forEach((h, i) => {
+    colorMap[h.id] = cardColors[i % cardColors.length];
+  });
+
+  function renderCard(item: Habit) {
+    const isDoneToday = item.lastCompletedDate === today;
+    const cardColor = colorMap[item.id];
+
+    return (
+      <View
+        key={item.id}
+        style={{
+          backgroundColor: cardColor,
+          width: CARD_SIZE,
+          height: CARD_SIZE,
+          borderRadius: 12,
+          padding: 12,
+          justifyContent: 'space-between',
+        }}
+      >
+        <Pressable style={{ flex: 1 }} onPress={() => toggleHabit(item.id)}>
+          <Text className="text-base font-bold text-textDark" numberOfLines={2}>
+            {item.title}
+          </Text>
+
+          <View className="flex-1 justify-center items-center">
+            <Ionicons
+              name={getHabitIcon(item.title)}
+              size={40}
+              color={isDoneToday ? '#FFFFFF' : '#2B1B12'}
+            />
+          </View>
+
+          {item.streak > 0 && (
+            <Text className="text-xs font-bold text-primary">
+              🔥 {item.streak} day streak
+            </Text>
+          )}
+          {isDoneToday && (
+            <Text className="text-xs font-bold text-textDark">
+              Completed for today!
+            </Text>
+          )}
+        </Pressable>
+
+        {isDoneToday && (
+          <View className="absolute top-2 left-2 bg-white rounded-full w-6 h-6 items-center justify-center">
+            <Ionicons name="checkmark" size={16} color="#4CAF50" />
+          </View>
+        )}
+
+        <Pressable
+          onPress={() => deleteHabit(item.id, item.title)}
+          className="absolute top-2 right-2"
+        >
+          <Ionicons name="trash-outline" size={16} color="#2B1B12" />
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-background pt-16 px-5">
       <View className="flex-row items-center mb-1">
@@ -160,94 +249,34 @@ export default function HomeScreen() {
         {doneCount} of {habits.length} completed today
       </Text>
 
-      <FlatList
-        data={habits}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ justifyContent: 'space-between' }}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-        renderItem={({ item, index }) => {
-          const isDoneToday = item.lastCompletedDate === today;
-          const cardColor = cardColors[index % cardColors.length];
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {habits.length === 0 && (
+          <Text className="text-textMuted text-center mt-10">
+            No habits yet — add one below to get started!
+          </Text>
+        )}
+
+        {categoryOrder.map((cat) => {
+          const habitsInCategory = habits.filter((h) => h.category === cat);
+          if (habitsInCategory.length === 0) return null;
 
           return (
-            <View
-              style={{ backgroundColor: cardColor, width: '48%', aspectRatio: 1 }}
-              className="rounded-md p-3 mb-3 justify-between"
-            >
-              <Pressable className="flex-1" onPress={() => toggleHabit(item.id)}>
-                <View className="flex-row items-center">
-                  <View
-                    style={{ backgroundColor: categoryColors[item.category] }}
-                    className="w-2 h-2 rounded-full mr-1"
-                  />
-                  <Text className="text-[10px] font-bold text-textDark">
-                    {item.category}
-                  </Text>
-                </View>
+            <View key={cat} className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <View
+                  style={{ backgroundColor: categoryColors[cat] }}
+                  className="w-3 h-3 rounded-full mr-2"
+                />
+                <Text className="text-lg font-bold text-textDark">{cat}</Text>
+              </View>
 
-                <Text className="text-base font-bold text-textDark mt-1" numberOfLines={2}>
-                  {item.title}
-                </Text>
-
-                <View className="flex-1 justify-center items-center">
-                  <Ionicons
-                    name={getHabitIcon(item.title)}
-                    size={40}
-                    color={isDoneToday ? '#FFFFFF' : '#2B1B12'}
-                  />
-                </View>
-
-                {item.streak > 0 && (
-                  <Text className="text-xs font-bold text-primary">
-                    🔥 {item.streak} day streak
-                  </Text>
-                )}
-                {isDoneToday && (
-                  <Text className="text-xs font-bold text-textDark">
-                    Completed for today!
-                  </Text>
-                )}
-              </Pressable>
-
-              {isDoneToday && (
-                <View className="absolute top-2 left-2 bg-white rounded-full w-6 h-6 items-center justify-center">
-                  <Ionicons name="checkmark" size={16} color="#4CAF50" />
-                </View>
-              )}
-
-              <Pressable
-                onPress={() => deleteHabit(item.id, item.title)}
-                className="absolute top-2 right-2"
-              >
-                <Ionicons name="trash-outline" size={16} color="#2B1B12" />
-              </Pressable>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
+                {habitsInCategory.map((item) => renderCard(item))}
+              </View>
             </View>
           );
-        }}
-      />
-
-      {/* Category picker for the new habit being added */}
-      <View className="flex-row mb-2">
-        {categories.map((cat) => (
-          <Pressable
-            key={cat}
-            onPress={() => setSelectedCategory(cat)}
-            style={{
-              backgroundColor: selectedCategory === cat ? categoryColors[cat] : '#FFF8F0',
-              borderColor: categoryColors[cat],
-            }}
-            className="border rounded-full px-3 py-1 mr-2"
-          >
-            <Text
-              className="text-xs font-bold"
-              style={{ color: selectedCategory === cat ? '#FFFFFF' : categoryColors[cat] }}
-            >
-              {cat}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+        })}
+      </ScrollView>
 
       <View className="flex-row mt-2 mb-2">
         <TextInput
