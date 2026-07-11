@@ -5,12 +5,24 @@ import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/Logo';
 import Celebration from '../components/Celebration';
 
+type Category = 'Health' | 'Fitness' | 'Learning' | 'Other';
+
 interface Habit {
   id: string;
   title: string;
   lastCompletedDate: string | null;
   streak: number;
+  category: Category;
 }
+
+const categoryColors: Record<Category, string> = {
+  Health: '#4CAF50',
+  Fitness: '#E63946',
+  Learning: '#3B82F6',
+  Other: '#8B6F5C',
+};
+
+const categories: Category[] = ['Health', 'Fitness', 'Learning', 'Other'];
 
 const cardColors = ['#F4A896', '#F6C99C', '#B8D8B8', '#A8D0DB', '#D6B8E8'];
 
@@ -42,11 +54,12 @@ function getHabitIcon(title: string): keyof typeof Ionicons.glyphMap {
 
 export default function HomeScreen() {
   const [habits, setHabits] = useState<Habit[]>([
-    { id: '1', title: 'Drink water', lastCompletedDate: null, streak: 0 },
-    { id: '2', title: 'Read 10 pages', lastCompletedDate: null, streak: 0 },
-    { id: '3', title: 'Stretch for 5 min', lastCompletedDate: null, streak: 0 },
+    { id: '1', title: 'Drink water', lastCompletedDate: null, streak: 0, category: 'Health' },
+    { id: '2', title: 'Read 10 pages', lastCompletedDate: null, streak: 0, category: 'Learning' },
+    { id: '3', title: 'Stretch for 5 min', lastCompletedDate: null, streak: 0, category: 'Fitness' },
   ]);
   const [newHabit, setNewHabit] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('Health');
   const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
@@ -111,6 +124,7 @@ export default function HomeScreen() {
       title: newHabit,
       lastCompletedDate: null,
       streak: 0,
+      category: selectedCategory,
     };
     setHabits([...habits, habit]);
     setNewHabit('');
@@ -162,7 +176,17 @@ export default function HomeScreen() {
               className="rounded-md p-3 mb-3 justify-between"
             >
               <Pressable className="flex-1" onPress={() => toggleHabit(item.id)}>
-                <Text className="text-base font-bold text-textDark" numberOfLines={2}>
+                <View className="flex-row items-center">
+                  <View
+                    style={{ backgroundColor: categoryColors[item.category] }}
+                    className="w-2 h-2 rounded-full mr-1"
+                  />
+                  <Text className="text-[10px] font-bold text-textDark">
+                    {item.category}
+                  </Text>
+                </View>
+
+                <Text className="text-base font-bold text-textDark mt-1" numberOfLines={2}>
                   {item.title}
                 </Text>
 
@@ -202,6 +226,28 @@ export default function HomeScreen() {
           );
         }}
       />
+
+      {/* Category picker for the new habit being added */}
+      <View className="flex-row mb-2">
+        {categories.map((cat) => (
+          <Pressable
+            key={cat}
+            onPress={() => setSelectedCategory(cat)}
+            style={{
+              backgroundColor: selectedCategory === cat ? categoryColors[cat] : '#FFF8F0',
+              borderColor: categoryColors[cat],
+            }}
+            className="border rounded-full px-3 py-1 mr-2"
+          >
+            <Text
+              className="text-xs font-bold"
+              style={{ color: selectedCategory === cat ? '#FFFFFF' : categoryColors[cat] }}
+            >
+              {cat}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       <View className="flex-row mt-2 mb-2">
         <TextInput
