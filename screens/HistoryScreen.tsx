@@ -10,6 +10,20 @@ const monthNames = [
 ];
 const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+function getToday(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getLast7Days(): string[] {
+  const days: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
 export default function HistoryScreen() {
   const [history, setHistory] = useState<Record<string, number>>({});
   const today = new Date();
@@ -45,7 +59,10 @@ export default function HistoryScreen() {
     .reduce((sum, [, count]) => sum + count, 0);
 
   return (
-    <ScrollView className="flex-1 bg-background pt-16 px-5">
+    <ScrollView
+      className="flex-1 bg-background px-5"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingTop: 64, paddingBottom: 40 }}
+    >
       <View className="flex-row items-center mb-1">
         <Logo size="small" />
         <Text className="text-4xl font-extrabold text-primary ml-3 tracking-wide">
@@ -56,10 +73,43 @@ export default function HistoryScreen() {
         {totalThisMonth} habits completed this month
       </Text>
 
+      {/* Weekly stats bar chart */}
+      <View className="bg-card rounded-md p-4 mb-6">
+        <Text className="text-lg font-bold text-textDark mb-4">This Week</Text>
+        <View className="flex-row items-end justify-between" style={{ height: 100 }}>
+          {getLast7Days().map((date) => {
+            const count = history[date] || 0;
+            const maxHeight = 80;
+            const barHeight = count === 0 ? 4 : Math.min(count * 20, maxHeight);
+            const dayLabel = dayLabels[new Date(date).getDay()];
+            const isToday = date === getToday();
+
+            return (
+              <View key={date} className="items-center" style={{ width: '12%' }}>
+                <View
+                  style={{
+                    height: barHeight,
+                    width: '100%',
+                    backgroundColor: count > 0 ? '#C1502E' : '#E8A87C',
+                    borderRadius: 6,
+                  }}
+                />
+                <Text
+                  className={`text-xs mt-2 ${isToday ? 'font-bold text-primary' : 'text-textMuted'}`}
+                >
+                  {dayLabel}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
       <Text className="text-xl font-bold text-textDark mb-3">
         {monthNames[month]} {year}
       </Text>
 
+      {/* Day-of-week header row */}
       <View className="flex-row mb-2">
         {dayLabels.map((label, i) => (
           <View key={i} className="flex-1 items-center">
@@ -68,6 +118,7 @@ export default function HistoryScreen() {
         ))}
       </View>
 
+      {/* Calendar grid */}
       <View className="flex-row flex-wrap">
         {calendarCells.map((day, index) => {
           if (day === null) {
@@ -99,7 +150,7 @@ export default function HistoryScreen() {
         })}
       </View>
 
-      <View className="mt-6 mb-10 flex-row items-center">
+      <View className="mt-6 flex-row items-center">
         <View className="w-4 h-4 rounded bg-accent mr-2" />
         <Text className="text-xs text-textMuted mr-4">Habits completed</Text>
         <View className="w-4 h-4 rounded bg-card border border-secondary mr-2" />
