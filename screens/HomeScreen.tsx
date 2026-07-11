@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, FlatList, Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../components/Logo';
+import Celebration from '../components/Celebration';
 
 interface Habit {
   id: string;
@@ -46,6 +47,7 @@ export default function HomeScreen() {
     { id: '3', title: 'Stretch for 5 min', lastCompletedDate: null, streak: 0 },
   ]);
   const [newHabit, setNewHabit] = useState('');
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     async function loadHabits() {
@@ -79,6 +81,10 @@ export default function HomeScreen() {
     const isDoneToday = habit.lastCompletedDate === today;
 
     logHistory(today, isDoneToday ? -1 : 1);
+
+    if (!isDoneToday) {
+      setShowCelebration(true);
+    }
 
     setHabits(
       habits.map((h) => {
@@ -216,6 +222,8 @@ export default function HomeScreen() {
       <Text className="text-xs text-textMuted text-center mb-5">
         Tap the trash icon to delete a habit
       </Text>
+
+      <Celebration visible={showCelebration} onDone={() => setShowCelebration(false)} />
     </View>
   );
 }
