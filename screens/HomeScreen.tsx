@@ -2,8 +2,14 @@ import { useState, useEffect } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, Alert, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Logo from '../components/Logo';
 import Celebration from '../components/Celebration';
+import {
+  requestNotificationPermission,
+  scheduleHabitReminder,
+  cancelHabitReminder,
+} from '../utils/notifications';
 
 type Category = 'Health' | 'Fitness' | 'Learning' | 'Other';
 
@@ -13,6 +19,8 @@ interface Habit {
   lastCompletedDate: string | null;
   streak: number;
   category: Category;
+  reminderHour: number | null;
+  reminderMinute: number | null;
 }
 
 const categoryColors: Record<Category, string> = {
@@ -82,12 +90,13 @@ function getHabitCategory(title: string): Category {
 
 export default function HomeScreen() {
   const [habits, setHabits] = useState<Habit[]>([
-    { id: '1', title: 'Drink water', lastCompletedDate: null, streak: 0, category: 'Health' },
-    { id: '2', title: 'Read 10 pages', lastCompletedDate: null, streak: 0, category: 'Learning' },
-    { id: '3', title: 'Stretch for 5 min', lastCompletedDate: null, streak: 0, category: 'Fitness' },
+    { id: '1', title: 'Drink water', lastCompletedDate: null, streak: 0, category: 'Health', reminderHour: null, reminderMinute: null },
+    { id: '2', title: 'Read 10 pages', lastCompletedDate: null, streak: 0, category: 'Learning', reminderHour: null, reminderMinute: null },
+    { id: '3', title: 'Stretch for 5 min', lastCompletedDate: null, streak: 0, category: 'Fitness', reminderHour: null, reminderMinute: null },
   ]);
   const [newHabit, setNewHabit] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
+  const [pickerHabitId, setPickerHabitId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadHabits() {
@@ -152,6 +161,8 @@ export default function HomeScreen() {
       lastCompletedDate: null,
       streak: 0,
       category: getHabitCategory(newHabit),
+      reminderHour: null,
+      reminderMinute: null,
     };
     setHabits([...habits, habit]);
     setNewHabit('');
@@ -166,9 +177,46 @@ export default function HomeScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => setHabits(habits.filter((h) => h.id !== id)),
+          onPress: async () => {
+            await cancelHabitReminder(id);
+            setHabits(habits.filter((h) => h.id !== id));
+          },
         },
       ]
+    );
+  }
+
+  async function handleTimeChange(event: any, selectedDate: Date | undefined, habitId: string) {
+    setPickerHabitId(null);
+
+    if (event.type === 'dismissed' || !selectedDate) return;
+
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      Alert.alert('Permission needed', 'Please allow notifications to set a reminder.');
+      return;
+    }
+
+    const hour = selectedDate.getHours();
+    const minute = selectedDate.getMinutes();
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    await scheduleHabitReminder(habitId, habit.title, hour, minute);
+
+    setHabits(
+      habits.map((h) =>
+        h.id === habitId ? { ...h, reminderHour: hour, reminderMinute: minute } : h
+      )
+    );
+  }
+
+  async function handleRemoveReminder(habitId: string) {
+    await cancelHabitReminder(habitId);
+    setHabits(
+      habits.map((h) =>
+        h.id === habitId ? { ...h, reminderHour: null, reminderMinute: null } : h
+      )
     );
   }
 
@@ -220,6 +268,33 @@ export default function HomeScreen() {
             </Text>
           )}
         </Pressable>
+
+        <Pressable
+          onPress={() =>
+            item.reminderHour !== null ? handleRemoveReminder(item.id) : setPickerHabitId(item.id)
+          }
+          className="absolute bottom-2 right-2 flex-row items-center"
+        >
+          <Ionicons
+            name={item.reminderHour !== null ? 'notifications' : 'notifications-outline'}
+            size={16}
+            color="#2B1B12"
+          />
+          {item.reminderHour !== null && (
+            <Text className="text-[10px] font-bold text-textDark ml-1">
+              {String(item.reminderHour).padStart(2, '0')}:{String(item.reminderMinute).padStart(2, '0')}
+            </Text>
+          )}
+        </Pressable>
+
+        {pickerHabitId === item.id && (
+          <DateTimePicker
+            value={new Date()}
+            mode="time"
+            is24Hour={false}
+            onChange={(event, date) => handleTimeChange(event, date, item.id)}
+          />
+        )}
 
         {isDoneToday && (
           <View className="absolute top-2 left-2 bg-white rounded-full w-6 h-6 items-center justify-center">
@@ -295,7 +370,7 @@ export default function HomeScreen() {
       </View>
 
       <Text className="text-xs text-textMuted text-center mb-5">
-        Tap the trash icon to delete a habit
+        Tap the bell to set a reminder, trash to delete
       </Text>
 
       <Celebration visible={showCelebration} onDone={() => setShowCelebration(false)} />
